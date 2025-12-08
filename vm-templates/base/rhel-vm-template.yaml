@@ -1,0 +1,100 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rhel9-server-small
+  namespace: openshift-virtualization-os-images
+  labels:
+    template.kubevirt.io/type: base
+    os.template.kubevirt.io/rhel9: "true"
+  annotations:
+    openshift.io/display-name: "Red Hat Enterprise Linux 9 VM"
+    description: "Template for Red Hat Enterprise Linux 9 virtual machines"
+    tags: "hidden,kubevirt,virtualmachine,linux,rhel"
+    iconClass: "icon-rhel"
+    template.kubevirt.io/provider: "Red Hat"
+    template.kubevirt.io/version: "v1"
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+objects:
+  - apiVersion: kubevirt.io/v1
+    kind: VirtualMachine
+    metadata:
+      name: ${VM_NAME}
+      labels:
+        app: ${VM_NAME}
+        vm.kubevirt.io/template: rhel9-server-small
+        vm.kubevirt.io/template-namespace: openshift-virtualization-os-images
+    spec:
+      running: false
+      dataVolumeTemplates:
+        - metadata:
+            name: ${VM_NAME}-rootdisk
+          spec:
+            storage:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 30Gi
+              storageClassName: ${STORAGE_CLASS}
+            sourceRef:
+              kind: DataSource
+              name: rhel9
+              namespace: openshift-virtualization-os-images
+      instancetype:
+        kind: VirtualMachineClusterInstancetype
+        name: u1.small
+      preference:
+        kind: VirtualMachineClusterPreference
+        name: rhel.9
+      template:
+        metadata:
+          labels:
+            kubevirt.io/domain: ${VM_NAME}
+            kubevirt.io/size: small
+        spec:
+          domain:
+            devices:
+              disks:
+                - disk:
+                    bus: virtio
+                  name: rootdisk
+                - disk:
+                    bus: virtio
+                  name: cloudinitdisk
+              interfaces:
+                - name: default
+                  masquerade: {}
+              networkInterfaceMultiqueue: true
+              rng: {}
+            resources:
+              requests:
+                memory: 2Gi
+          networks:
+            - name: default
+              pod: {}
+          volumes:
+            - dataVolume:
+                name: ${VM_NAME}-rootdisk
+              name: rootdisk
+            - cloudInitNoCloud:
+                userData: |
+                  #cloud-config
+                  user: cloud-user
+                  password: ${CLOUD_USER_PASSWORD}
+                  chpasswd: { expire: False }
+              name: cloudinitdisk
+parameters:
+  - name: VM_NAME
+    description: Name of the virtual machine
+    required: true
+  - name: STORAGE_CLASS
+    description: Storage class for the VM disk
+    value: "ocs-storagecluster-ceph-rbd"
+  - name: CLOUD_USER_PASSWORD
+    description: Cloud user password
+    generate: expression
+    from: "[a-zA-Z0-9]{16}"
