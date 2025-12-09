@@ -2,7 +2,7 @@ apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   name: custom-rhel9-server-small
-  namespace: openshift-virtualization-os-images
+  namespace: vm-testing
   labels:
     template.kubevirt.io/type: base
     os.template.kubevirt.io/rhel9: "true"
@@ -26,7 +26,7 @@ objects:
       labels:
         app: ${VM_NAME}
         vm.kubevirt.io/template: custom-rhel9-server-small
-        vm.kubevirt.io/template-namespace: openshift-virtualization-os-images
+        vm.kubevirt.io/template-namespace: vm-testing
     spec:
       running: false
       dataVolumeTemplates:
